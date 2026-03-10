@@ -1,48 +1,65 @@
 "use client";
 
-import React, { Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '../../components/ui/Card';
 import { MonthlyChart } from '../../components/MonthlyChart';
 import { Button } from '../../components/ui/Button';
 
-function DashboardContent() {
-  const searchParams = useSearchParams();
+// Separate component for the main dashboard content to allow suspense wrap
+const DashboardContent = () => {
   const router = useRouter();
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const dataStr = searchParams.get('data');
-  let result: any = null;
-  try {
-    if (dataStr) {
-      result = JSON.parse(decodeURIComponent(dataStr));
+  useEffect(() => {
+    // Get data from localStorage (more reliable than URL params)
+    const storedData = localStorage.getItem('calcResult');
+    
+    if (storedData) {
+      try {
+        const parsed = JSON.parse(storedData);
+        console.log("✅ Dashboard received data:", parsed); // Debug log
+        setResult(parsed);
+      } catch (e) {
+        console.error("❌ Failed to parse stored data:", e);
+      }
+    } else {
+      console.warn("⚠️ No data found in localStorage");
     }
-  } catch (e) {
-    console.error('failed to parse dashboard data', e);
+    
+    setLoading(false);
+  }, []);
+
+  // Format helpers
+  const formatCurrency = (value: number | undefined) => {
+    if (!value) return '—';
+    return `$${(value / 1000).toFixed(1)}k`;
+  };
+
+  const formatNumber = (value: number | undefined, decimals = 3) => {
+    if (value === undefined || value === null) return '—';
+    return value.toFixed(decimals);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+        <p className="text-xl">Loading dashboard...</p>
+      </div>
+    );
   }
 
   if (!result) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
         <div className="text-center">
-          <p className="text-gray-400 mb-4">No data available. Please run a calculation on the home page.</p>
-          <Button onClick={() => router.push('/')}>← Return to Home</Button>
+          <p className="text-red-400 mb-4">No calculation data available.</p>
+          <Button onClick={() => router.push('/')}>← Return to Input Page</Button>
         </div>
       </div>
     );
   }
-
-  // Format currency values
-  const formatCurrency = (value: number | undefined) => {
-    if (!value) return '—';
-    if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
-    if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(1)}k`;
-    return `$${value.toFixed(2)}`;
-  };
-
-  const formatNumber = (value: number | undefined, decimals = 2) => {
-    if (value === undefined || value === null) return '—';
-    return value.toFixed(decimals);
-  };
 
   return (
     <div className="flex h-screen bg-gray-900 text-white">
@@ -224,7 +241,7 @@ function DashboardContent() {
       </main>
     </div>
   );
-}
+};
 
 export default function DashboardPage() {
   return (

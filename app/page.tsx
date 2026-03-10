@@ -25,6 +25,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
+
   // Call backend API when parameters change
   useEffect(() => {
     const doCalc = async () => {
@@ -69,12 +71,12 @@ export default function HomePage() {
     return () => clearTimeout(timeoutId);
   }, [parameters]);
 
-  const goDashboard = () => {
-    if (calcResult) {
-      router.push('/dashboard?data=' + encodeURIComponent(JSON.stringify(calcResult)));
-    }
-  };
-
+ const goDashboard = () => {
+  if (calcResult) {
+    localStorage.setItem('calcResult', JSON.stringify(calcResult));
+    router.push('/dashboard');
+  }
+};
   return (
     <div className="flex h-screen bg-gray-900 text-white">
       <Sidebar parameters={parameters} onParametersChange={setParameters} />
