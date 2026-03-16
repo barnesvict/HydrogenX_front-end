@@ -32,36 +32,34 @@ useEffect(() => {
     setLoading(true);
     setError(null);
     try {
-      // Correct payload mapping for your backend Pydantic model
       const payload = {
-        site_name: "Site 1",
+  site_name: "Site 1",
 
-        // Primary drivers (what the backend expects)
-        daily_load_kw: parameters.dailyLoad,                    // ← your dailyLoad field
-        battery_autonomy_hours: parameters.batteryAutonomy,
-        hydrogen_autonomy_hours: parameters.hydrogenAutonomy,
+  // ← THIS IS THE MISSING PART
+  load_autonomy: {
+    daily_load_kw: parameters.siteLoad,          // ← your siteLoad value (kW)
+    battery_autonomy_hours: parameters.batteryAutonomy,
+    hydrogen_autonomy_hours: parameters.hydrogenAutonomy,
+  },
 
-        // Tech specs group
-        tech_specs: {
-          battery_usable_ratio: parameters.batteryDoD / 100,
-          battery_power_rating_kw: parameters.dailyLoad * 1.1,   // safety margin
-          battery_efficiency_percent: parameters.batteryEfficiency,
-          electrolyzer_efficiency_percent: parameters.electrolyzerEfficiency,
-          fuel_cell_efficiency_percent: parameters.fuelCellEfficiency,
-          pv_performance_ratio: parameters.pvEfficiencyFactor,
-          peak_sun_hours_per_day: (parameters.janAveragePSH + parameters.augustAveragePSH) / 2,
-        },
+  tech_specs: {
+    battery_usable_ratio: parameters.batteryDoD / 100,
+    battery_efficiency_percent: parameters.batteryEfficiency,
+    fuel_cell_efficiency_percent: parameters.fuelCellEfficiency,
+    electrolyzer_efficiency_percent: parameters.electrolyzerEfficiency,
+    pv_performance_ratio: parameters.pvEfficiencyFactor,
+    peak_sun_hours_per_day: (parameters.janAveragePSH + parameters.augustAveragePSH) / 2,
+  },
 
-        // Global parameters group
-        global_params: {
-          discount_rate_percent: parameters.discountRate,
-          inflation_percent: parameters.opexInflation,
-          subsidy_percent: parameters.capexSubsidy,
-          eaas_price_usd_per_kwh: parameters.eaasPrice,           // important for EaaS revenue
-          project_lifetime_years: parameters.systemLifetime,
-          operation_days_per_year: 365,
-        }
-      };
+  global_params: {
+    discount_rate_percent: parameters.discountRate,
+    inflation_percent: parameters.opexInflation,
+    subsidy_percent: parameters.capexSubsidy,
+    eaas_price_usd_per_kwh: parameters.eaasPrice,
+    project_lifetime_years: parameters.systemLifetime,
+    operation_days_per_year: 365,
+  }
+};
 
       const response = await fetch('https://hydrogenx.onrender.com/calculate_single_site', {
         method: 'POST',
@@ -69,9 +67,7 @@ useEffect(() => {
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 
       const data = await response.json();
       setCalcResult(data);
@@ -98,7 +94,7 @@ useEffect(() => {
 
   const timeoutId = setTimeout(doCalc, 500);
   return () => clearTimeout(timeoutId);
-}, [parameters]);   // re-run when any parameter changes
+}, [parameters]);
 
  const goDashboard = () => {
   if (calcResult) {

@@ -129,10 +129,10 @@ export function Sidebar({ parameters, onParametersChange }: SidebarProps) {
 
         <NumberInput
           label="Daily Load (kWh/day)"
-          value={parameters.dailyLoad}
-          onChange={(v) => updateParam('dailyLoad', v)}
-          tooltip="Daily Consumption(kWh/day)"
-          min={0}
+          value={parameters.siteLoad * 24}   // ← derived automatically
+          onChange={() => {}}                // disabled
+          disabled
+          tooltip="Auto-calculated from Site Load"
         />
 
         <Slider
