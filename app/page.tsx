@@ -29,7 +29,7 @@ export default function HomePage() {
  // Call backend API when parameters change
 useEffect(() => {
   const doCalc = async () => {
-    setLoading(true);
+    setLoading(false);
     setError(null);
     try {
       const payload = {
