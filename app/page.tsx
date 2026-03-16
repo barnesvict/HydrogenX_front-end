@@ -26,51 +26,79 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+ // Call backend API when parameters change
+useEffect(() => {
+  const doCalc = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Correct payload mapping for your backend Pydantic model
+      const payload = {
+        site_name: "Site 1",
 
+        // Primary drivers (what the backend expects)
+        daily_load_kw: parameters.dailyLoad,                    // ← your dailyLoad field
+        battery_autonomy_hours: parameters.batteryAutonomy,
+        hydrogen_autonomy_hours: parameters.hydrogenAutonomy,
 
-  // Call backend API when parameters change
-  useEffect(() => {
-    const doCalc = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('https://hydrogenx.onrender.com/calculate_single_site', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ parameters })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`API error: ${response.statusText}`);
+        // Tech specs group
+        tech_specs: {
+          battery_usable_ratio: parameters.batteryDoD / 100,
+          battery_power_rating_kw: parameters.dailyLoad * 1.1,   // safety margin
+          battery_efficiency_percent: parameters.batteryEfficiency,
+          electrolyzer_efficiency_percent: parameters.electrolyzerEfficiency,
+          fuel_cell_efficiency_percent: parameters.fuelCellEfficiency,
+          pv_performance_ratio: parameters.pvEfficiencyFactor,
+          peak_sun_hours_per_day: (parameters.janAveragePSH + parameters.augustAveragePSH) / 2,
+        },
+
+        // Global parameters group
+        global_params: {
+          discount_rate_percent: parameters.discountRate,
+          inflation_percent: parameters.opexInflation,
+          subsidy_percent: parameters.capexSubsidy,
+          eaas_price_usd_per_kwh: parameters.eaasPrice,           // important for EaaS revenue
+          project_lifetime_years: parameters.systemLifetime,
+          operation_days_per_year: 365,
         }
-        
-        const data = await response.json();
-        setCalcResult(data);
-        
-        // Extract preview values from response
-        setPreview({
-          lcoe: data.financial_metrics?.lcoe_usd_per_kwh ?? 0,
-          lcoh: data.financial_metrics?.lcoh_usd_per_kg ?? 0,
-          capex: data.capex_breakdown?.total_capex_after_subsidy_usd ?? 0,
-          revenue: data.revenue_streams?.total_revenue_usd_per_year ?? 0,
-          totalRevenue: data.revenue_streams?.total_revenue_usd_per_year ?? 0,
-          electricityRevenue: data.revenue_streams?.electricity_sales_revenue_usd_per_year ?? 0,
-          heatRevenue: data.revenue_streams?.heat_recovery_revenue_usd_per_year ?? 0,
-          oxygenRevenue: data.revenue_streams?.oxygen_byproduct_revenue_usd_per_year ?? 0
-        });
-      } catch (e) {
-        console.error('Calculation error:', e);
-        setError(e instanceof Error ? e.message : 'Calculation failed');
-        setPreview(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    // Debounce API calls
-    const timeoutId = setTimeout(doCalc, 500);
-    return () => clearTimeout(timeoutId);
-  }, [parameters]);
+      const response = await fetch('https://hydrogenx.onrender.com/calculate_single_site', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      setCalcResult(data);
+
+      // Update live preview
+      setPreview({
+        lcoe: data.financial_metrics?.lcoe_usd_per_kwh ?? 0,
+        lcoh: data.financial_metrics?.lcoh_usd_per_kg ?? 0,
+        capex: data.capex_breakdown?.total_capex_after_subsidy_usd ?? 0,
+        revenue: data.revenue_streams?.total_revenue_usd_per_year ?? 0,
+        totalRevenue: data.revenue_streams?.total_revenue_usd_per_year ?? 0,
+        electricityRevenue: data.revenue_streams?.electricity_sales_revenue_usd_per_year ?? 0,
+        heatRevenue: data.revenue_streams?.heat_recovery_revenue_usd_per_year ?? 0,
+        oxygenRevenue: data.revenue_streams?.oxygen_byproduct_revenue_usd_per_year ?? 0
+      });
+    } catch (e) {
+      console.error('Calculation error:', e);
+      setError(e instanceof Error ? e.message : 'Calculation failed');
+      setPreview(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const timeoutId = setTimeout(doCalc, 500);
+  return () => clearTimeout(timeoutId);
+}, [parameters]);   // re-run when any parameter changes
 
  const goDashboard = () => {
   if (calcResult) {
