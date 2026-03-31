@@ -1,8 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Slider } from './ui/Slider';
 import { NumberInput } from './ui/NumberInput';
+import { Button } from './ui/Button';
+import { getLocationGHI } from '../lib/api';
 
 export interface Parameters {
+  // Location
+  latitude: number;
+  longitude: number;
+
   // Project Load & Autonomy
   siteLoad: number;
   dailyLoad: number;
@@ -49,6 +55,10 @@ export interface Parameters {
 }
 
 export const DEFAULT_PARAMETERS: Parameters = {
+  // Location
+  latitude: 40.7128, // Default to NYC
+  longitude: -74.006,
+
   // Project Load & Autonomy
   siteLoad: 20,
   dailyLoad: 192,
@@ -100,6 +110,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ parameters, onParametersChange }: SidebarProps) {
+  const [fetchingGHI, setFetchingGHI] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+
   const updateParam = (key: keyof Parameters, value: number) => {
     const updated = { ...parameters, [key]: value };
 
@@ -111,9 +124,62 @@ export function Sidebar({ parameters, onParametersChange }: SidebarProps) {
     onParametersChange(updated);
   };
 
+  const handleFetchWeatherData = async () => {
+    setFetchingGHI(true);
+    setGeoError(null);
+    try {
+      const data = await getLocationGHI(parameters.latitude, parameters.longitude);
+      if (data.monthly_psh && Array.isArray(data.monthly_psh)) {
+        const updated = { ...parameters };
+        updated.janAveragePSH = data.monthly_psh[0] || parameters.janAveragePSH;
+        updated.augustAveragePSH = data.monthly_psh[7] || parameters.augustAveragePSH;
+        onParametersChange(updated);
+      }
+    } catch (err) {
+      setGeoError(
+        err instanceof Error ? err.message : 'Failed to fetch weather data'
+      );
+    } finally {
+      setFetchingGHI(false);
+    }
+  };
+
   return (
     <aside className="w-80 p-4 bg-gray-800 h-screen overflow-auto text-white">
       <h2 className="text-lg font-bold mb-6">Project Parameters</h2>
+
+      {/* Location */}
+      <section className="mb-8 p-4 bg-gray-900 rounded border border-gray-700">
+        <h3 className="font-semibold text-green-400 mb-4">Location (Optional)</h3>
+
+        <NumberInput
+          label="Latitude"
+          value={parameters.latitude}
+          onChange={(v) => updateParam('latitude', v)}
+          tooltip="Site latitude"
+          step={0.001}
+        />
+
+        <NumberInput
+          label="Longitude"
+          value={parameters.longitude}
+          onChange={(v) => updateParam('longitude', v)}
+          tooltip="Site longitude"
+          step={0.001}
+        />
+
+        <Button
+          onClick={handleFetchWeatherData}
+          disabled={fetchingGHI}
+          className="w-full mt-3 text-sm"
+        >
+          {fetchingGHI ? 'Fetching...' : 'Fetch Weather Data'}
+        </Button>
+
+        {geoError && (
+          <p className="text-red-400 text-xs mt-2">{geoError}</p>
+        )}
+      </section>
 
       {/* Project Load & Autonomy */}
       <section className="mb-8 p-4 bg-gray-900 rounded border border-gray-700">
